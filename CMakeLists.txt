@@ -670,6 +670,19 @@ if(SEAL_BUILD_EXAMPLES)
     add_subdirectory(native/examples)
 endif()
 
+######################
+# SEAL C++ Exercice1 #
+######################
+
+# [option] SEAL_BUILD_EXERCICE1
+set(SEAL_BUILD_EXERCICE1_OPTION_STR "Build Seal Exercice 1")
+option(SEAL_BUILD_EXERCICE1 ${SEAL_BUILD_EXERCICE1_OPTION_STR} OFF)
+message(STATUS "SEAL_BUILD_EXERCICE1: ${SEAL_BUILD_EXERCICE1}")
+
+if(SEAL_BUILD_EXERCICE1)
+    add_subdirectory(native/exercice1)
+endif()
+
 ##################
 # SEAL C++ tests #
 ##################
