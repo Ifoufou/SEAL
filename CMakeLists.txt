@@ -683,6 +683,32 @@ if(SEAL_BUILD_EXERCICE1)
     add_subdirectory(native/exercice1)
 endif()
 
+######################
+# SEAL C++ Exercice2 #
+######################
+
+# [option] SEAL_BUILD_EXERCICE2
+set(SEAL_BUILD_EXERCICE2_OPTION_STR "Build Seal Exercice 2")
+option(SEAL_BUILD_EXERCICE2 ${SEAL_BUILD_EXERCICE2_OPTION_STR} OFF)
+message(STATUS "SEAL_BUILD_EXERCICE2: ${SEAL_BUILD_EXERCICE2}")
+
+if(SEAL_BUILD_EXERCICE2)
+    add_subdirectory(native/exercice2)
+endif()
+
+######################
+# SEAL C++ S-BOX #
+######################
+
+# [option] SEAL_BUILD_SBOX
+set(SEAL_BUILD_SBOX_OPTION_STR "Build Seal S-Box")
+option(SEAL_BUILD_SBOX ${SEAL_BUILD_SBOX_OPTION_STR} OFF)
+message(STATUS "SEAL_BUILD_SBOX: ${SEAL_BUILD_SBOX}")
+
+if(SEAL_BUILD_SBOX)
+    add_subdirectory(native/sbox)
+endif()
+
 ##################
 # SEAL C++ tests #
 ##################

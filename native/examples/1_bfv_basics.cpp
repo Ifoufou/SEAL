@@ -224,6 +224,51 @@ void example_bfv_basics()
     Ciphertext x_encrypted;
     cout << "Encrypt x_plain to x_encrypted." << endl;
     encryptor.encrypt(x_plain, x_encrypted);
+    
+    size_t i;
+    try {
+        for (i=0; i < 100; i++)
+            seal::Ciphertext::ct_coeff_type* t = x_encrypted.data(i);
+    }
+    catch (const std::exception& e) {
+        std::cout << "index exception p: " << i << std::endl;
+    }
+
+    /* If the polynomial modulus has degree N,
+       and the number of primes in the coefficient modulus is K, then the
+       ciphertext contains size*N*K coefficients. */
+
+    size_t size_monome = x_encrypted.size()*x_encrypted.poly_modulus_degree()*
+                         x_encrypted.coeff_modulus_size();
+    try {
+        for (i=0; i < size_monome+1; i++)
+            size_t t = x_encrypted[i];
+    }
+    catch (const std::exception& e) {
+        std::cout << "index exception element: " << i << std::endl;
+        std::cout << "number of monomes: " << size_monome << std::endl;
+        std::cout << "last element of the array: " << x_encrypted[size_monome-1] << std::endl;
+    }
+
+    uint16_t tab[4];
+    std::memcpy(tab, &x_encrypted[size_monome-1], sizeof(uint16_t)*4);
+    std::cout << "last element of the array(16 byte): " << tab[1] << std::endl;
+
+    using coeff_type64 = seal::Ciphertext::ct_coeff_type;
+    // par chunk de 8 octets
+    coeff_type64* t = x_encrypted.data();
+    size_t size = x_encrypted.poly_modulus_degree()*x_encrypted.coeff_modulus_size()*x_encrypted.size();
+    /* If the size of the ciphertext is T,
+    the poly_modulus_degree encryption parameter is N, and the number of
+    primes in the coeff_modulus encryption parameter is K, then the
+    ciphertext backing array requires precisely 8*N*K*T bytes of memory.*/
+    std::cout << "last element of the array: " << t[size-1] << std::endl;
+    std::cout << "last element of the array(16 byte): " << ((uint16_t*)t)[size*4-3] << std::endl;
+    
+    using coeff_type16 = uint16_t;
+    coeff_type16* q = reinterpret_cast<coeff_type16*>(t);
+    // par chunk de 2 octets
+    std::cout << "last element of the array(16 byte): " << q[size*4-3] << std::endl;
 
     /*
     In Microsoft SEAL, a valid ciphertext consists of two or more polynomials
