@@ -141,10 +141,10 @@ public:
     }
 
     // XOR operation on encrypted bit
-    // 0 ^ 0 = 0
-    // 0 ^ 1 = 1
-    // 1 ^ 0 = 1
-    // 1 ^ 1 = 0
+    // 0 + 0 = 0
+    // 0 + 1 = 1
+    // 1 + 0 = 1
+    // 1 + 1 = 0
     inline CryptoBit xor_op(const CryptoBit& rhs) const {
         seal::Ciphertext res;
         _ctxt.evaluator().add(_encryptedBit, rhs._encryptedBit, res);
@@ -217,22 +217,22 @@ public:
 };
 
 template <typename dataType, size_t bitsize>
-class CryptoBitField
+class CryptoBitset
 {
     BitEncryptionContext& _ctxt;
     std::vector<CryptoBit> _container;
-
-    CryptoBitField(BitEncryptionContext& ctxt, std::vector<CryptoBit>& container)
-        : _ctxt(ctxt), _container(container)
-    {
-    }
 
 public:
     using iterator       = std::vector<CryptoBit>::iterator;
     using const_iterator = std::vector<CryptoBit>::const_iterator;
 
+    CryptoBitset(BitEncryptionContext& ctxt, std::vector<CryptoBit>& container)
+        : _ctxt(ctxt), _container(container)
+    {
+    }
+
 public:
-    CryptoBitField(BitEncryptionContext& ctxt, dataType inputData)
+    CryptoBitset(BitEncryptionContext& ctxt, dataType inputData)
         : _ctxt(ctxt)
     {
         assert(bitsize >= 1);
@@ -245,12 +245,12 @@ public:
             _container.push_back(CryptoBit(_ctxt, (inputData >> i) & 0b1));
     }
 
-    CryptoBitField(CryptoBitField const& cbitfield)
+    CryptoBitset(CryptoBitset const& cbitfield)
         : _ctxt(cbitfield._ctxt), _container(cbitfield._container)
     {
     }
 
-    CryptoBitField& operator=(CryptoBitField&& cbitfield)
+    CryptoBitset& operator=(CryptoBitset&& cbitfield)
     {
         std::swap(_ctxt, cbitfield._ctxt);
         std::swap(_container, cbitfield._container);
@@ -264,63 +264,132 @@ public:
         return decryptedValue;
     }
 
-    static CryptoBitField broadcast(BitEncryptionContext& ctxt, const CryptoBit& cbit) {
+#define AND &
+#define XOR ^
+#define NOT !
+
+    CryptoBitset select(const CryptoBitset& cond, const CryptoBitset& a, 
+                          const CryptoBitset& b) const
+    {
+        return (cond AND a) XOR ((NOT cond) AND b);
+    }
+
+#undef AND
+#undef XOR
+#undef NOT
+
+    static CryptoBitset broadcast(BitEncryptionContext& ctxt, const CryptoBit& cbit) {
         std::vector<CryptoBit> container(bitsize, cbit);
-        return CryptoBitField(ctxt, container);
+        return CryptoBitset(ctxt, container);
     }
 
     // Apply an unary boolean operator on every bit of the CryptoBitField
-    CryptoBitField apply_bitwise_unop(std::function<CryptoBit(const CryptoBit&)> op) const
+    CryptoBitset apply_bitwise_unop(std::function<CryptoBit(const CryptoBit&)> op) const
     {
         std::vector<CryptoBit> res;
         for (size_t i = 0; i < bitsize; i++)
             res.push_back(op(_container[i]));
-        return CryptoBitField(_ctxt, res);
+        return CryptoBitset(_ctxt, res);
     }
 
     // Apply an binary boolean operator between every x_i and y_i of the lhs and rhs
     // Cryptobitfields
-    CryptoBitField apply_bitwise_binop(std::function<CryptoBit(const CryptoBit&, 
+    CryptoBitset apply_bitwise_binop(std::function<CryptoBit(const CryptoBit&, 
                                                                const CryptoBit&)> op, 
-                                       const CryptoBitField& rhs) const
+                                       const CryptoBitset& rhs) const
     {
         std::vector<CryptoBit> res;
         for (size_t i = 0; i < bitsize; i++)
             res.push_back(op(_container[i], rhs[i]));
-        return CryptoBitField(_ctxt, res);
+        return CryptoBitset(_ctxt, res);
     }
 
-    CryptoBitField apply_seq_AND() const
+    // Shifting a bitfield shift times on the left
+    // If 0111010 is the internal value, 
+    // the 2-shift will be 1101000
+    inline CryptoBitset shift_left(size_t shamt) const {
+        // a left shift (shift towards the MSB) corresponds to a right shift
+        // in our vector encoding
+        std::vector<CryptoBit> vec(this->_container);
+
+        for (size_t i = 0; i < std::min(shamt, vec.size()); i++) {
+            vec.insert(vec.begin(), _ctxt.c0());
+            vec.pop_back();
+        }
+        return CryptoBitset(_ctxt, vec);
+    }
+
+    inline CryptoBitset shift_right(size_t shamt) const {
+        // a right shift (towards the LSB) corresponds to a left shift
+        // in our vector encoding
+        std::vector<CryptoBit> vec(this->_container);
+
+        for (size_t i = 0; i < std::min(shamt, vec.size()); i++) {
+            vec.insert(vec.end(), _ctxt.c0());
+            vec.erase(vec.begin());
+        }
+        return CryptoBitset(_ctxt, vec);
+    }
+
+    inline CryptoBitset rotate_left(size_t shamt) const {
+        std::vector<CryptoBit> vec(_container);
+
+        for (size_t i = 0; i < shamt; i++) {
+            vec.insert(vec.begin(), vec.back());
+            vec.pop_back();
+        }
+        return CryptoBitset(_ctxt, vec);
+    }
+
+    inline CryptoBitset rotate_right(size_t shamt) const {
+        std::vector<CryptoBit> vec(_container);
+
+        for (size_t i = 0; i < shamt; i++) {
+            vec.insert(vec.end(), vec.front());
+            vec.erase(vec.begin());
+        }
+        return CryptoBitset(_ctxt, vec);
+    }
+
+    CryptoBitset apply_seq_AND() const
     {
         CryptoBit acc = _container[0];
         for (size_t i = 1; i < bitsize; i++)
             acc = _container[i] & acc;
-        return CryptoBitField::broadcast(_ctxt, acc);
+        return CryptoBitset::broadcast(_ctxt, acc);
     }
 
-    inline CryptoBitField operator&(const CryptoBitField& rhs) const
+    inline CryptoBitset operator&(const CryptoBitset& rhs) const
     {
         return apply_bitwise_binop(&CryptoBit::and_op, rhs);
     }
 
-    inline CryptoBitField operator|(const CryptoBitField& rhs) const
+    inline CryptoBitset operator|(const CryptoBitset& rhs) const
     {
         return apply_bitwise_binop(&CryptoBit::or_op, rhs);
     }
 
-    inline CryptoBitField operator==(const CryptoBitField& rhs) const
+    inline CryptoBitset operator==(const CryptoBitset& rhs) const
     {
         return apply_bitwise_binop(&CryptoBit::xnor_op, rhs);
     }
 
-    inline CryptoBitField operator^(const CryptoBitField& rhs) const
+    inline CryptoBitset operator^(const CryptoBitset& rhs) const
     {
         return apply_bitwise_binop(&CryptoBit::xor_op, rhs);
     }
 
-    inline CryptoBitField operator!() const
+    inline CryptoBitset operator!() const
     {
         return apply_bitwise_unop(&CryptoBit::not_op);
+    }
+
+    inline CryptoBitset operator<<(size_t shamt) const {
+        return shift_left(shamt);
+    }
+
+    inline CryptoBitset operator>>(size_t shamt) const {
+        return shift_right(shamt);
     }
 
     // Return the minimal noise budget of the bitfield, i.e. the noise budget 
