@@ -696,17 +696,17 @@ if(SEAL_BUILD_EXERCICE2)
     add_subdirectory(native/exercice2)
 endif()
 
-######################
-# SEAL C++ S-BOX #
-######################
+##########################
+# SEAL C++ Key-switching #
+##########################
 
-# [option] SEAL_BUILD_SBOX
-set(SEAL_BUILD_SBOX_OPTION_STR "Build Seal S-Box")
-option(SEAL_BUILD_SBOX ${SEAL_BUILD_SBOX_OPTION_STR} OFF)
-message(STATUS "SEAL_BUILD_SBOX: ${SEAL_BUILD_SBOX}")
+# [option] SEAL_BUILD_KEYSWITCHING
+set(SEAL_BUILD_KEYSWITCHING_OPTION_STR "Build Seal Key-Switching")
+option(SEAL_BUILD_KEYSWITCHING ${SEAL_BUILD_KEYSWITCHING_OPTION_STR} OFF)
+message(STATUS "SEAL_BUILD_KEYSWITCHING: ${SEAL_BUILD_KEYSWITCHING}")
 
-if(SEAL_BUILD_SBOX)
-    add_subdirectory(native/sbox)
+if(SEAL_BUILD_KEYSWITCHING)
+    add_subdirectory(native/keyswitching)
 endif()
 
 ##################
